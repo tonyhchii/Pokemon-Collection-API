@@ -1,11 +1,10 @@
+require("dotenv").config();
 const axios = require("axios");
-
 // Pokémon TCG API base URL
 const POKEMON_TCG_API_URL = "https://api.pokemontcg.io/v2/cards";
-
 // Controller function to fetch cards
 const getCards = async (req, res) => {
-  const { name, set, page = 1, pageSize = 10 } = req.query;
+  const { name, set, series, page = 1, pageSize = 10 } = req.query;
 
   try {
     // Build query parameters for the Pokémon TCG API
@@ -25,6 +24,10 @@ const getCards = async (req, res) => {
       queryParams.q.push(`set.name:"*${set}*"`);
     }
 
+    if (series) {
+      queryParams.q.push(`set.series:"*${series}*"`);
+    }
+
     // Join query conditions with ' AND '
     queryParams.q = queryParams.q.join(" AND ");
 
@@ -33,16 +36,20 @@ const getCards = async (req, res) => {
     // Make a GET request to the Pokémon TCG API
     const response = await axios.get(POKEMON_TCG_API_URL, {
       params: queryParams,
+      headers: {
+        "X-Api-Key": process.env.POKEMONTCGAPIKEY, // Include the API key in the headers
+      },
     });
 
     // Extract card data from the API response
     const cards = response.data.data.map((card) => ({
       id: card.id,
       name: card.name,
-      series: card.series,
+      series: card.set.series,
       set_name: card.set.name,
       set_number: card.number,
       image_url: card.images.large,
+      tcgplayer_url: card.tcgplayer.url,
       prices: card.tcgplayer?.prices
         ? Object.entries(card.tcgplayer.prices).map(
             ([condition, priceData]) => ({
