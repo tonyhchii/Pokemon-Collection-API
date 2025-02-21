@@ -6,9 +6,11 @@ const collectionsController = require("../controllers/collectionsController");
 router.post("/:collectionId/cards", collectionsController.addCardToCollection);
 
 // GET /collections/:collectionId/cards - Get all cards in a collection
-router.get(
-  "/collections/:collectionId/cards",
-  collectionsController.getCardsInCollection
+router.get("/:collectionId/cards", collectionsController.getCardsInCollection);
+
+router.put(
+  "/:collectionId/cards/:cardId",
+  collectionsController.updateCardPrices
 );
 
 module.exports = router;

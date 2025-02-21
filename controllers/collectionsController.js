@@ -116,9 +116,54 @@ const getCardsInCollection = async (req, res) => {
   }
 };
 
+const updateCardPrices = async (req, res) => {
+  const { collectionId, cardId } = req.params; // Extract collectionId and cardId from params
+  const { prices } = req.body; // Get the new prices from the request body
+
+  if (!prices) {
+    return res.status(400).json({ error: "Prices are required" });
+  }
+
+  try {
+    // Check if the card exists in the collection
+    const cardCheckQuery = `
+        SELECT * FROM cards WHERE id = $1 AND collection_id = $2;
+      `;
+    const cardCheckResult = await pool.query(cardCheckQuery, [
+      cardId,
+      collectionId,
+    ]);
+
+    if (cardCheckResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Card not found in this collection" });
+    }
+
+    // Update the prices for the specified card
+    const updatePricesQuery = `
+        UPDATE cards
+        SET prices = $1
+        WHERE id = $2 AND collection_id = $3
+        RETURNING *;
+      `;
+    const updatedCardResult = await pool.query(updatePricesQuery, [
+      JSON.stringify(prices), // Ensure prices are stored as JSON
+      cardId,
+      collectionId,
+    ]);
+
+    res.status(200).json(updatedCardResult.rows[0]);
+  } catch (error) {
+    console.error("Error updating card prices:", error.message);
+    res.status(500).json({ error: "Failed to update card prices" });
+  }
+};
+
 module.exports = {
   createCollection,
   addCardToCollection,
   getCardsInCollection,
-  getCollectionsForUser, // Add the new function to module exports
+  getCollectionsForUser,
+  updateCardPrices,
 };
