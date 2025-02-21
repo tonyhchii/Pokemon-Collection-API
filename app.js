@@ -9,7 +9,7 @@ const indexRouter = require("./routes/index"); // Import the router
 const app = express();
 
 // Set the port from environment variables or default to 3000
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 // Middleware to parse JSON and URL-encoded request bodies
 app.use(express.json()); // Parse JSON bodies
