@@ -1,0 +1,20 @@
+{
+  "name": "pokemon-collection-api",
+  "version": "1.0.0",
+  "description": "pokemon collection api",
+  "main": "app.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "Pokemon-Collection-API"
+  },
+  "author": "Tony Huang",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
