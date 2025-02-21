@@ -24,4 +24,6 @@ router.get("/:userId/collections", collectionsController.getCollectionsForUser);
 
 router.post("/:userId/collections", collectionsController.createCollection);
 
+router.post("/login", userController.logIn);
+
 module.exports = router;

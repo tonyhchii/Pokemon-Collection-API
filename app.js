@@ -1,6 +1,8 @@
 // Load environment variables from .env file
 require("dotenv").config();
 
+const cors = require("cors");
+
 // Import required modules
 const express = require("express");
 const indexRouter = require("./routes/index"); // Import the router
@@ -14,6 +16,7 @@ const port = process.env.PORT || 3001;
 // Middleware to parse JSON and URL-encoded request bodies
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(cors()); // Enable CORS for all routes
 
 // Use the router for all routes starting with '/'
 app.use("/", indexRouter);

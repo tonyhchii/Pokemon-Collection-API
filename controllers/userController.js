@@ -1,6 +1,8 @@
+require("dotenv").config();
 const pool = require("../db/db");
 const bcrypt = require("bcrypt");
 const { validationResult } = require("express-validator");
+const jwt = require("jsonwebtoken");
 
 // Create a new user
 const createUser = async (req, res) => {
@@ -61,4 +63,41 @@ const getUsers = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getUsers };
+const logIn = async (req, res) => {
+  const { username, password } = req.body;
+  console.log(username, password, "debug");
+  try {
+    // 1. Check if the user exists
+    const result = await pool.query("SELECT * FROM users WHERE username = $1", [
+      username,
+    ]);
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    // 2. Compare the provided password with the hashed password in the database
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    // 3. Create JWT Token
+    const payload = {
+      userId: user.id, // Store user ID in the token
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h", // Token expires in 1 hour
+    });
+
+    // 4. Send the token to the client
+    res.json({ token });
+  } catch (error) {
+    console.error("Error during login:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+module.exports = { createUser, getUsers, logIn };
