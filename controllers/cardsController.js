@@ -4,77 +4,106 @@ const axios = require("axios");
 const POKEMON_TCG_API_URL = "https://api.pokemontcg.io/v2/cards";
 // Controller function to fetch cards
 const getCards = async (req, res) => {
-  const { name, set, series, page = 1, pageSize = 10 } = req.query;
+  const { search, page = 1, pageSize = 10 } = req.query;
 
   try {
-    // Build query parameters for the Pokémon TCG API
-    const queryParams = {
-      q: [], // Array to hold query conditions
-      page: parseInt(page),
-      pageSize: Math.min(parseInt(pageSize), 100), // Ensure pageSize is <= 100
-    };
+    let cards;
 
-    // Add name filter
-    if (name) {
-      queryParams.q.push(`name:"*${name}*"`);
+    if (!search) {
+      // If no search term, fetch all cards
+      const response = await axios.get("https://api.pokemontcg.io/v2/cards", {
+        params: {
+          pageSize: 100, // Limit the number of results fetched
+        },
+        headers: {
+          "X-Api-Key": process.env.POKEMONTCGAPIKEY, // Include the API key in the headers
+        },
+      });
+
+      cards = response.data.data.map((card) => ({
+        id: card.id,
+        name: card.name,
+        series: card.set.series,
+        set_name: card.set.name,
+        set_number: card.number,
+        image_url: card.images.large,
+        tcgplayer_url: card.tcgplayer?.url || null, // Fallback to null if tcgplayer is undefined
+        prices: card.tcgplayer?.prices
+          ? Object.entries(card.tcgplayer.prices).map(
+              ([condition, priceData]) => ({
+                condition,
+                price:
+                  priceData.market ||
+                  priceData.mid ||
+                  priceData.low ||
+                  priceData.high ||
+                  0,
+              })
+            )
+          : [],
+      }));
+    } else {
+      // If search term is provided, perform the search
+      const searchTerms = search.split(" "); // Split the search query into terms
+
+      // Construct the query for the Pokémon TCG API
+      const query = searchTerms
+        .map(
+          (term) =>
+            `(name:*${term}* OR set.name:*${term}* OR set.series:*${term}*)`
+        )
+        .join(" AND ");
+
+      // Fetch cards with the query
+      const response = await axios.get("https://api.pokemontcg.io/v2/cards", {
+        params: {
+          q: query,
+          pageSize: 100, // Limit the number of results fetched
+        },
+        headers: {
+          "X-Api-Key": process.env.POKEMONTCGAPIKEY, // Include the API key in the headers
+        },
+      });
+
+      cards = response.data.data.map((card) => ({
+        id: card.id,
+        name: card.name,
+        series: card.set.series,
+        set_name: card.set.name,
+        set_number: card.number,
+        image_url: card.images.large,
+        tcgplayer_url: card.tcgplayer?.url || null, // Fallback to null if tcgplayer is undefined
+        prices: card.tcgplayer?.prices
+          ? Object.entries(card.tcgplayer.prices).map(
+              ([condition, priceData]) => ({
+                condition,
+                price:
+                  priceData.market ||
+                  priceData.mid ||
+                  priceData.low ||
+                  priceData.high ||
+                  0,
+              })
+            )
+          : [],
+      }));
     }
 
-    // Add set filter
-    if (set) {
-      queryParams.q.push(`set.name:"*${set}*"`);
-    }
+    // Pagination
+    const totalCount = cards.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
 
-    if (series) {
-      queryParams.q.push(`set.series:"*${series}*"`);
-    }
-
-    // Join query conditions with ' AND '
-    queryParams.q = queryParams.q.join(" AND ");
-
-    console.log(queryParams.q);
-
-    // Make a GET request to the Pokémon TCG API
-    const response = await axios.get(POKEMON_TCG_API_URL, {
-      params: queryParams,
-      headers: {
-        "X-Api-Key": process.env.POKEMONTCGAPIKEY, // Include the API key in the headers
-      },
-    });
-
-    // Extract card data from the API response
-    const cards = response.data.data.map((card) => ({
-      id: card.id,
-      name: card.name,
-      series: card.set.series,
-      set_name: card.set.name,
-      set_number: card.number,
-      image_url: card.images.large,
-      tcgplayer_url: card.tcgplayer.url,
-      prices: card.tcgplayer?.prices
-        ? Object.entries(card.tcgplayer.prices).map(
-            ([condition, priceData]) => ({
-              condition,
-              price:
-                priceData.market ||
-                priceData.mid ||
-                priceData.low ||
-                priceData.high ||
-                0,
-            })
-          )
-        : [],
-    }));
-
-    // Pagination metadata
-    const totalCount = response.data.totalCount;
-    const totalPages = Math.ceil(totalCount / queryParams.pageSize);
+    // Apply pagination
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + parseInt(pageSize);
+    const paginatedCards = cards.slice(startIndex, endIndex);
 
     // Send the response
     res.json({
-      data: cards,
+      data: paginatedCards,
       pagination: {
         page: parseInt(page),
-        pageSize: queryParams.pageSize,
+        pageSize: parseInt(pageSize),
         totalCount,
         totalPages,
       },
