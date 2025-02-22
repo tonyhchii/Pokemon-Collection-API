@@ -64,6 +64,7 @@ const addCardToCollection = async (req, res) => {
     id,
     name,
     series,
+    quantity = 1,
     set_name,
     set_number,
     image_url,
@@ -73,13 +74,14 @@ const addCardToCollection = async (req, res) => {
 
   try {
     const query = `
-      INSERT INTO cards (id, collection_id, name, series, set_name, set_number, image_url, tcgplayer_url, prices)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO cards (id, collection_id, quantity, name, series, set_name, set_number, image_url, tcgplayer_url, prices)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
     const values = [
       id,
       collectionId,
+      quantity,
       name,
       series,
       set_name,
@@ -103,13 +105,24 @@ const getCardsInCollection = async (req, res) => {
   const { collectionId } = req.params;
 
   try {
+    const collectionQuery = `
+      SELECT name FROM collections WHERE id = $1;
+    `;
+    const collectionResult = await pool.query(collectionQuery, [collectionId]);
+
+    if (collectionResult.rows.length === 0) {
+      return res.status(404).json({ error: "Collection not found" });
+    }
+
+    const collectionName = collectionResult.rows[0].name;
+
     const query = `
       SELECT * FROM cards
       WHERE collection_id = $1;
     `;
-    const result = await pool.query(query, [collectionId]);
+    const cardsResult = await pool.query(query, [collectionId]);
 
-    res.status(200).json(result.rows);
+    res.status(200).json({ collectionName, cards: cardsResult.rows });
   } catch (error) {
     console.error("Error fetching cards from collection:", error.message);
     res.status(500).json({ error: "Failed to fetch cards from collection" });
